@@ -7,9 +7,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.math.*;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.util.Date;
 import java.sql.Timestamp;
 import lejos.hardware.ev3.LocalEV3;
@@ -85,7 +82,7 @@ public class stateofthemachine
 				BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
 				PrintWriter printWriter = new PrintWriter(bufferedWriter);	) 
 		{
-			printWriter.println(state);
+			printWriter.println("State: " + state);
 			printWriter.println(new Timestamp(date.getTime()));
 			
 		} catch (IOException e)
@@ -106,7 +103,6 @@ public class stateofthemachine
 		catch (IOException e)
 		{
 			e.printStackTrace();
-			// TODO: handle exception
 		}
 			return null;*/
 		 	
@@ -114,7 +110,6 @@ public class stateofthemachine
 	
 	public static void main (String[] args) throws InterruptedException
 	{
-		logWrite();
 		naviBot.addWaypoint(fx,fy);
 		naviBot.followPath();
 		
