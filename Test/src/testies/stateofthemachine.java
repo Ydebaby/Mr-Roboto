@@ -54,9 +54,11 @@ public class stateofthemachine
 	
 	static SampleProvider distancefront = sens1UltraFront.getMode("Distance");
 	static float[] sampledistfront = new float[distancefront.sampleSize()];
+	static float senfront;
 	
 	static SampleProvider distanceside = sens2UltraSide.getMode("Distance");
 	static float[] sampledistside = new float[distanceside.sampleSize()];
+	static float senside;
 	
 	static int fx = 200;
 	static int fy = 0;
@@ -82,8 +84,10 @@ public class stateofthemachine
 				BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
 				PrintWriter printWriter = new PrintWriter(bufferedWriter);	) 
 		{
-			printWriter.println("State: " + state);
 			printWriter.println(new Timestamp(date.getTime()));
+			printWriter.println("State: " + state);
+			printWriter.println("Sensor side: " + senside*100 + "cm");
+			printWriter.println("Sensor front: " + senfront*100 + "cm");
 			
 		} catch (IOException e)
 		{
@@ -120,8 +124,13 @@ public class stateofthemachine
 				case 1: LCD.clear(); LCD.drawString("case 1", 1, 1);
 					
 					naviBot.followPath();
+					//Sensor overkill for debugging
 					distancefront.fetchSample(sampledistfront,0);
+					distanceside.fetchSample(sampledistside, 0);
+					senfront = sampledistfront[0];
+					senside = sampledistside[0];
 					Thread.sleep(100);
+					
 					if(sampledistfront[0]<0.2)
 					{
 						naviBot.clearPath();
@@ -133,12 +142,12 @@ public class stateofthemachine
 				case 2: LCD.clear(); LCD.drawString("case 2", 1, 1);
 					
 					naviBot.clearPath();
-					logWrite();
-					newpose = Poseo.getPose();
 					Point turnLeft = polarHeading(-90,newpose);
+					newpose = Poseo.getPose();
 					naviBot.addWaypoint(newpose.getX()+1f*turnLeft.x,newpose.getY()+1f*turnLeft.y);
 					naviBot.followPath();
 					Thread.sleep(500);
+					logWrite();
 					
 					state = 4;
 					break;
@@ -153,21 +162,23 @@ public class stateofthemachine
 					state = 4;
 					break;*/
 				case 4: LCD.clear(); LCD.drawString("Case 4", 1, 1);
-				
+								
 					naviBot.clearPath();
-					logWrite();
+					newpose = Poseo.getPose();
+					naviBot.addWaypoint(newpose.getX()+5f,newpose.getY(),newpose.getHeading());
+					naviBot.followPath();
+					distancefront.fetchSample(sampledistfront,0);
 					distanceside.fetchSample(sampledistside, 0);
+					senfront = sampledistfront[0];
+					senside = sampledistside[0];
+					Thread.sleep(100);
 					
-					while(sampledistside[0]<0.2)
+					if(sampledistside[0]>0.2)
 					{
-						newpose = Poseo.getPose();
-						Thread.sleep(100);
-						naviBot.addWaypoint(newpose.getX()+5f,newpose.getY(),newpose.getHeading());
-						naviBot.followPath();
-						distanceside.fetchSample(sampledistside, 0);
-						
+						naviBot.clearPath();
+						logWrite();
+						state = 1;
 					}
-					state = 1;
 					break;
 					
 			}
