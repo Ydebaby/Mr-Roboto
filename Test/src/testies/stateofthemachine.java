@@ -7,6 +7,9 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.math.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.Date;
 import java.sql.Timestamp;
 import lejos.hardware.ev3.LocalEV3;
@@ -54,19 +57,18 @@ public class stateofthemachine
 	
 	static SampleProvider distancefront = sens1UltraFront.getMode("Distance");
 	static float[] sampledistfront = new float[distancefront.sampleSize()];
-	static float senfront;
 	
 	static SampleProvider distanceside = sens2UltraSide.getMode("Distance");
 	static float[] sampledistside = new float[distanceside.sampleSize()];
-	static float senside;
+	
+	static Pose ThePoseLol;
+	
 	
 	static int fx = 200;
 	static int fy = 0;
+
 	
-	static Pose start = new Pose();
-	static Pose newpose = new Pose();
-	
-	static int state = 1;
+	static int state = 0;
 		
 	static Point polarHeading(int heading, Pose thePose)
 	{
@@ -77,17 +79,37 @@ public class stateofthemachine
 		return polarPoint;
 	}
 		
-	static PrintWriter logWrite()
+	static FileWriter logWrite()
 	{
-		Date date = new Date();
+		//Date date = new Date();
+		String filename = "File.txt";
+		
+		try (BufferedWriter writer = new BufferedWriter(new FileWriter(filename, true)))
+		{
+			//PrintWriter printWriter = new PrintWriter(writer);
+			
+			//printWriter.println(new Timestamp(date.getTime()));
+			writer.write("State: " + state + " ");
+			//writer.write("Sensor side: " + senside*100 + "cm");
+			//writer.write("Sensor front: " + senfront*100 + "cm");
+			writer.write("Pose: " + ThePoseLol.getX() + " " + ThePoseLol.getY() + " " + ThePoseLol.getHeading() + '\n');
+			
+		} catch (Exception e)
+		{
+			e.printStackTrace();
+		}
+		
+		return null;
+
+		/*Date date = new Date();
 		try(	FileWriter fileWriter = new FileWriter("File.txt", true);
 				BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
 				PrintWriter printWriter = new PrintWriter(bufferedWriter);	) 
 		{
 			printWriter.println(new Timestamp(date.getTime()));
 			printWriter.println("State: " + state);
-			printWriter.println("Sensor side: " + senside*100 + "cm");
-			printWriter.println("Sensor front: " + senfront*100 + "cm");
+			printWriter.println("Pose: " + ThePoseLol.getX() + " " + ThePoseLol.getY() + " " + ThePoseLol.getHeading());
+
 			
 		} catch (IOException e)
 		{
@@ -107,6 +129,7 @@ public class stateofthemachine
 		catch (IOException e)
 		{
 			e.printStackTrace();
+			// TODO: handle exception
 		}
 			return null;*/
 		 	
@@ -114,74 +137,184 @@ public class stateofthemachine
 	
 	public static void main (String[] args) throws InterruptedException
 	{
-		naviBot.addWaypoint(fx,fy);
-		naviBot.followPath();
+		
 		
 		while(true)
 		{	
+			
 			switch (state)
 			{
-				case 1: LCD.clear(); LCD.drawString("case 1", 1, 1);
-					
+				case 0: LCD.clear(); LCD.drawString("case 0", 1, 1);
+			
+					/*ThePoseLol = Poseo.getPose();
+					logWrite();*/
+					naviBot.addWaypoint(fx,fy);
 					naviBot.followPath();
-					//Sensor overkill for debugging
+				
 					distancefront.fetchSample(sampledistfront,0);
-					distanceside.fetchSample(sampledistside, 0);
-					senfront = sampledistfront[0];
-					senside = sampledistside[0];
-					Thread.sleep(100);
+					distanceside.fetchSample(sampledistside,0);
 					
 					if(sampledistfront[0]<0.2)
 					{
-						naviBot.clearPath();
+						//naviBot.stop();
+						ThePoseLol = Poseo.getPose();
 						logWrite();
-						state = 2;
-					}
-					break;
-					
-				case 2: LCD.clear(); LCD.drawString("case 2", 1, 1);
-					
-					naviBot.clearPath();
-					Point turnLeft = polarHeading(-90,newpose);
-					newpose = Poseo.getPose();
-					naviBot.addWaypoint(newpose.getX()+1f*turnLeft.x,newpose.getY()+1f*turnLeft.y);
-					naviBot.followPath();
-					Thread.sleep(500);
-					logWrite();
-					
-					state = 4;
-					break;
-				/*case 3: LCD.clear(); LCD.drawString("Case 3", 1, 1);
-				
-					naviBot.clearPath();
-					newpose = Poseo.getPose();
-					Point turnRight = polarHeading(90,newpose);
-					naviBot.addWaypoint(newpose.getX()+1f*turnRight.x,newpose.getY()+1f*turnRight.y);
-					Thread.sleep(500);
-					naviBot.followPath();
-					state = 4;
-					break;*/
-				case 4: LCD.clear(); LCD.drawString("Case 4", 1, 1);
-								
-					naviBot.clearPath();
-					newpose = Poseo.getPose();
-					naviBot.addWaypoint(newpose.getX()+5f,newpose.getY(),newpose.getHeading());
-					naviBot.followPath();
-					distancefront.fetchSample(sampledistfront,0);
-					distanceside.fetchSample(sampledistside, 0);
-					senfront = sampledistfront[0];
-					senside = sampledistside[0];
-					Thread.sleep(100);
-					
-					if(sampledistside[0]>0.2)
-					{
 						naviBot.clearPath();
-						logWrite();
 						state = 1;
 					}
+					
+					if(sampledistside[0]<0.3)
+					{
+						//naviBot.stop();
+						ThePoseLol = Poseo.getPose();
+						logWrite();
+						naviBot.clearPath();
+						state = 2;
+					}
+					
+					break;
+					
+				case 1: LCD.clear(); LCD.drawString("case 1", 1, 1);
+
+					ThePoseLol = Poseo.getPose();
+					logWrite();
+					Thread.sleep(100);
+					//naviBot.clearPath();
+					Point Left = polarHeading(-90,Poseo.getPose());
+					naviBot.addWaypoint(Poseo.getPose().getX()+Left.x,Poseo.getPose().getY()+Left.y);
+					naviBot.followPath();
+					if(naviBot.waitForStop())
+					state = 3;
+					
+					/*{
+						distanceside.fetchSample(sampledistside,0);
+						if(sampledistside[0]<0.3)
+						{
+							state = 2;
+						}else if(sampledistside[0]>0.3) {
+							state = 0;
+						}
+						
+					}
+					*/
+					break;
+					
+					
+				case 2: LCD.clear(); LCD.drawString("case 2", 1, 1);
+
+						ThePoseLol = Poseo.getPose();
+						logWrite();
+						naviBot.clearPath();
+						Thread.sleep(100);
+						naviBot.addWaypoint(Poseo.getPose().getX()+5f,Poseo.getPose().getY(),Poseo.getPose().getHeading());
+						naviBot.followPath();
+						if(naviBot.waitForStop())
+						{
+							distanceside.fetchSample(sampledistside,0);
+							if(sampledistside[0]<0.3)
+							{
+								state = 3;
+							}else if(sampledistside[0]>0.3)
+							{
+								state = 0;
+							}
+							
+						}
+				
+					break;
+					
+				case 3: LCD.clear(); LCD.drawString("case 3", 1, 1);
+					Thread.sleep(100);
+					distancefront.fetchSample(sampledistfront,0);
+					distanceside.fetchSample(sampledistside,0);
+					
+//					if(sampledistfront[0]<0.2)
+//					{
+//						//naviBot.stop();
+//						/*ThePoseLol = Poseo.getPose();
+//						logWrite();*/
+//						naviBot.clearPath();
+//						state = 1;
+//					}
+					
+					if(sampledistside[0]<0.3)
+					{
+						//naviBot.stop();
+						ThePoseLol = Poseo.getPose();
+						logWrite();
+						naviBot.clearPath();
+						state = 2;
+					}
+					
+					//state = 0;
+					
+					break;
+					
+				default:
+					
 					break;
 					
 			}
 		}
+
+		
+		/*while(true)
+		{	
+			
+			
+			LCD.clear(); LCD.drawString("start", 1, 1);
+			distancefront.fetchSample(sampledistfront,0);
+			distanceside.fetchSample(sampledistside,0);
+			
+			if(sampledistfront[0]<0.2)
+			{
+				naviBot.stop();
+				naviBot.clearPath();
+				state = 1;
+			}
+			
+			if(sampledistside[0]<0.3)
+			{
+				naviBot.stop();
+				naviBot.clearPath();
+				state = 2;
+			}
+			
+			naviBot.addWaypoint(fx,fy);
+			naviBot.followPath();
+			
+			switch (state)
+			{
+				case 1: LCD.clear(); LCD.drawString("case 1", 1, 1);
+					
+					//naviBot.clearPath();
+					Point Left = polarHeading(-90,Poseo.getPose());
+					Thread.sleep(200);
+					naviBot.addWaypoint(Poseo.getPose().getX()+Left.x,Poseo.getPose().getY()+Left.y);
+					naviBot.followPath();
+					if(naviBot.waitForStop())
+					{
+					state = 0;
+					}
+					break;
+					
+					
+				case 2: LCD.clear(); LCD.drawString("case 2", 1, 1);
+					
+					//naviBot.clearPath();
+					naviBot.addWaypoint(Poseo.getPose().getX()+5f,Poseo.getPose().getY());
+					naviBot.followPath();
+					if(naviBot.waitForStop())
+					{
+						state = 0;
+					}
+					break;
+					
+				default:
+					
+					break;
+					
+			}
+		}*/
 	}
 }
