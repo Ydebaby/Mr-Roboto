@@ -63,12 +63,13 @@ public class stateofthemachine
 	
 	static Pose ThePoseLol;
 	
-	
 	static int fx = 200;
 	static int fy = 0;
 
-	
 	static int state = 0;
+	
+	static Pose start = new Pose();
+	static Pose newpose = new Pose();
 		
 	static Point polarHeading(int heading, Pose thePose)
 	{
@@ -180,12 +181,19 @@ public class stateofthemachine
 					//logWrite();
 					Thread.sleep(100);
 					//naviBot.clearPath();
-					Point Left = polarHeading(-90,Poseo.getPose());
-					naviBot.addWaypoint(Poseo.getPose().getX()+Left.x,Poseo.getPose().getY()+Left.y);
+					
+					//Point Left = polarHeading(-90,Poseo.getPose());	//OG code
+					//naviBot.addWaypoint(Poseo.getPose().getX()+Left.x,Poseo.getPose().getY()+Left.y); //OG code
+					
+					Point turnLeft = polarHeading(-90,newpose);
+					naviBot.addWaypoint(newpose.getX()+20f*turnLeft.x,newpose.getY()+20f*turnLeft.y);
+					naviBot.addWaypoint(start.getX()+fx,start.getY()+fy);
+					
 					naviBot.followPath();
 					if(naviBot.waitForStop())
-					state = 3;
-					
+					{
+						state = 3;
+					}
 					/*{
 						distanceside.fetchSample(sampledistside,0);
 						if(sampledistside[0]<0.3)
@@ -206,7 +214,12 @@ public class stateofthemachine
 						//logWrite();
 						naviBot.clearPath();
 						Thread.sleep(100);
-						naviBot.addWaypoint(Poseo.getPose().getX()+5f,Poseo.getPose().getY());
+						
+						//naviBot.addWaypoint(Poseo.getPose().getX()+5f,Poseo.getPose().getY());	//OG code
+						
+						naviBot.addWaypoint(newpose.getX()+5f,newpose.getY()+5f*turnLeft.y);
+						naviBot.addWaypoint(start.getX()+fx,start.getY()+fy);
+						
 						naviBot.followPath();
 						if(naviBot.waitForStop())
 						{

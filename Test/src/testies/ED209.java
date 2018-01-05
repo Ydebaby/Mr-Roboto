@@ -2,6 +2,9 @@ package testies;
 
 
 import com.sun.corba.se.impl.oa.poa.ActiveObjectMap.Key;
+
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.math.*;
 import lejos.hardware.ev3.LocalEV3;
 import lejos.hardware.lcd.LCD;
@@ -9,12 +12,12 @@ import lejos.hardware.motor.EV3LargeRegulatedMotor;
 import lejos.hardware.motor.EV3MediumRegulatedMotor;
 import lejos.hardware.port.MotorPort;
 import lejos.hardware.port.Port;
+import lejos.hardware.sensor.EV3IRSensor;
 import lejos.hardware.sensor.EV3UltrasonicSensor;
 import lejos.hardware.sensor.HiTechnicCompass;
 import lejos.hardware.sensor.SensorMode;
 import lejos.hardware.sensor.SensorModes;
 import lejos.robotics.RegulatedMotor;
-import lejos.robotics.navigation.MovePilot;
 import lejos.robotics.chassis.*;
 import lejos.robotics.chassis.WheeledChassis;
 import lejos.robotics.geometry.Point;
@@ -22,12 +25,11 @@ import lejos.robotics.chassis.Wheel;
 import lejos.robotics.navigation.*;
 import lejos.robotics.localization.*;
 import lejos.robotics.localization.CompassPoseProvider.*;
-import lejos.robotics.navigation.Move;
 import lejos.robotics.SampleProvider;
 import lejos.utility.Delay;
 import lejos.hardware.Button;
 
-public class Newtest
+public class ED209
 {
 	static RegulatedMotor leftm = new EV3LargeRegulatedMotor(MotorPort.A); //motor 1
 	static RegulatedMotor rightm = new EV3LargeRegulatedMotor(MotorPort.B); //motor 2
@@ -39,16 +41,50 @@ public class Newtest
 	static OdometryPoseProvider Poseo = new OdometryPoseProvider(Bronchio);
 	static Navigator naviBot = new Navigator(Bronchio, Poseo); 
 	
+	static Pose start = new Pose();
+	static Pose newpose = new Pose();
 	
-	static Port port2 = LocalEV3.get().getPort("S2"); //ultrasonic
-	static SensorModes sens1UltraFront = new EV3UltrasonicSensor(port2);
+	static Port port3 = LocalEV3.get().getPort("S2"); //ultrasonic
+	static SensorModes sensUltraRight = new EV3UltrasonicSensor(port3);
+	
+	static Port port2 = LocalEV3.get().getPort("S3"); //ultrasonic
+	static SensorModes sensUltraLeft = new EV3UltrasonicSensor(port2);
+	
+	static int fx = 200;
+	static int fy = 0;
+	
+	static SampleProvider distanceRight = sensUltraRight.getMode("Distance");
+	static float[] sampledistRight = new float[distanceRight.sampleSize()];
+	
+	static SampleProvider distanceLeft = sensUltraLeft.getMode("Distance");
+	static float[] sampledistLeft = new float[distanceLeft.sampleSize()];
+	
+	/*SampleProvider distanceside = sens2UltraSide.getMode("Distance");
+	float[] sampledistside = new float[distanceside.sampleSize()];*/
 	
 	/*static Port port3 = LocalEV3.get().getPort("S3"); //ultrasonic
 	static SensorModes sens2UltraSide = new EV3UltrasonicSensor(port3);*/
 	
+	static Pose ThePoseLol;
+	static FileWriter logWrite()
+	{
+		//Date date = new Date();
+		String filename = "File.txt";
+		
+		try (BufferedWriter writer = new BufferedWriter(new FileWriter(filename, true)))
+		{
+			writer.write("Pose: " + ThePoseLol.getX() + " " + ThePoseLol.getY() + " " + ThePoseLol.getHeading() + '\n');
+			
+		} catch (Exception e)
+		{
+			e.printStackTrace();
+		}
+		
+		return null;
+	}
+	
 	static Point polarHeading(int heading, Pose thePose)
 	{
-		
 		float fucklort = Float.parseFloat(String.valueOf(Math.toRadians(thePose.getHeading()+heading)));
 		float x = Float.parseFloat(String.valueOf(Math.cos(fucklort)));
 		float y = Float.parseFloat(String.valueOf(Math.sin(fucklort)));
@@ -56,59 +92,39 @@ public class Newtest
 		return polarPoint;
 	}
 	
-	/*
-	static Port port1 = LocalEV3.get().getPort("S1"); //compass
-	static SensorModes sens1Comp = new HiTechnicCompass(port1);
-	*/
-	
 	public static void main(String[] args) throws InterruptedException
 	{
-		
-		SampleProvider distancefront = sens1UltraFront.getMode("Distance");
-		float[] sampledistfront = new float[distancefront.sampleSize()];
-		
-		/*SampleProvider distanceside = sens2UltraSide.getMode("Distance");
-		float[] sampledistside = new float[distanceside.sampleSize()];*/
-		
-		/*SampleProvider angle = sens1Comp.getMode("Compass");
-		float[] sampledeg = new float[angle.sampleSize()];*/
-		
-		
-		StringBuffer sb = new StringBuffer(16);
-
-		int fx = 200;
-		int fy = 0;
-		
-		while(true)
-		{
-			
-			Pose start = new Pose();
-			//start = Poseo.getPose();
-			Pose newpose = new Pose();
+			ThePoseLol = Poseo.getPose();
+			logWrite();
+			//naviBot.singleStep(true);
 			naviBot.addWaypoint(fx,fy);
 			naviBot.followPath();
 			
-			
 			while(naviBot.isMoving())
-			{
-				distancefront.fetchSample(sampledistfront,0);
-				if(sampledistfront[0]<0.2)
+			{				
+				naviBot.followPath();
+				distanceRight.fetchSample(sampledistRight,0);
+				distanceLeft.fetchSample(sampledistLeft, 0);
+				
+				if(sampledistRight[0]<0.25 || sampledistLeft[0]<0.25)
 				{
-					//naviBot.stop();
-					naviBot.clearPath();
-					newpose = Poseo.getPose();
+					ThePoseLol = Poseo.getPose();
+					logWrite();
+					//naviBot.stop(); 
+					naviBot.clearPath(); // OG code
+					//newpose = Poseo.getPose();
 					
-					
-					Point turnLeft = polarHeading(-90,newpose);
+					Point Left = polarHeading(-90,Poseo.getPose()); // from statofthemachine
+					//Point left = polarHeading(-90,newpose); //OG code
 					//Point turnRight = polarHeading(90,newpose);
 					
 					
+					naviBot.addWaypoint(Poseo.getPose().getX()+20f*Left.x,Poseo.getPose().getY()+20f*Left.y); // from statofthemachine
+					//naviBot.addWaypoint(newpose.getX()+20f*left.x,newpose.getY()+20f*left.y);		//OG code
+					naviBot.addWaypoint(/*start.getX()+*/fx,/*start.getY()+*/fy);
 					
-					naviBot.addWaypoint(newpose.getX()+40f*turnLeft.x,newpose.getY()+40f*turnLeft.y);
-					//Delay.msDelay(100);
-					naviBot.addWaypoint(start.getX()+fx,start.getY()+fy);
-					
-					naviBot.followPath();
+					naviBot.followPath(); //OG code
+					//Poseo.equals(null);
 					Thread.sleep(500);
 					
 					
@@ -116,10 +132,7 @@ public class Newtest
 					
 				}	
 			}
-			System.exit(0);
-							
-		}
-	
+			System.exit(0);	
 	}
 
 }
